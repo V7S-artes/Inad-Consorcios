@@ -1,0 +1,868 @@
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+
+<style>
+  html, body {
+    margin: 0; padding: 0;
+    background: linear-gradient(180deg, #E9EBE3 0%, #E1E5DC 100%);
+    min-height: 100vh;
+  }
+  body { padding: 36px 20px; box-sizing: border-box; }
+  #painel-inad * { box-sizing: border-box; }
+  #painel-inad {
+    --petrol-dark: #012E35;
+    --petrol-mid: #014A53;
+    --brand-green: #A8C81E;
+    --paper: #F5F6F1;
+    --white: #FFFFFF;
+    --ink: #0B1F22;
+    --ink-soft: #526266;
+    --line: #DCE3DF;
+    --f1: #E3B341;
+    --f2: #DB7F3D;
+    --f3: #C0392B;
+    --shadow: 0 1px 2px rgba(1,46,53,0.06), 0 8px 24px -12px rgba(1,46,53,0.18);
+
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--ink);
+    background: var(--paper);
+    border-radius: 20px;
+    overflow: hidden;
+    max-width: 1280px;
+    margin: 0 auto;
+    box-shadow: var(--shadow);
+    position: relative;
+  }
+  #painel-inad::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 4px; z-index: 2;
+    background: linear-gradient(90deg, var(--brand-green) 0%, var(--petrol-mid) 55%, var(--brand-green) 100%);
+    background-size: 200% 100%;
+  }
+  #painel-inad .num { font-family: 'IBM Plex Mono', monospace; font-variant-numeric: tabular-nums; }
+  #painel-inad h1, #painel-inad h2, #painel-inad .hero-val, #painel-inad .therm-pa {
+    font-family: 'Space Grotesk', sans-serif;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    #painel-inad .head, #painel-inad section { animation: painel-rise .5s ease both; }
+  }
+  @keyframes painel-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ---------- header ---------- */
+  #painel-inad .head {
+    background: radial-gradient(130% 170% at 0% 0%, var(--petrol-mid) 0%, var(--petrol-dark) 60%);
+    color: var(--white);
+    padding: 34px 34px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+  #painel-inad .head::before {
+    content: ""; position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(0deg, rgba(255,255,255,0.05) 0 1px, transparent 1px 34px);
+    pointer-events: none;
+  }
+  #painel-inad .eyebrow {
+    font-size: 11.5px; letter-spacing: 0.16em; text-transform: uppercase;
+    color: var(--brand-green); font-weight: 600; margin: 0 0 8px;
+  }
+  #painel-inad .head h1 {
+    font-size: clamp(26px, 3.6vw, 36px); margin: 0 0 4px; font-weight: 700;
+  }
+  #painel-inad .head .sub { font-size: 13px; color: #B9CBCD; margin: 0; }
+
+  #painel-inad .hero-stat { margin-top: 26px; }
+  #painel-inad .hero-lbl { font-size: 11.5px; color: #9FBBBD; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 600; margin-bottom: 4px; }
+  #painel-inad .hero-val { font-size: clamp(38px, 6vw, 58px); font-weight: 700; color: var(--brand-green); line-height: 1; }
+
+  #painel-inad .stats {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    margin-top: 22px;
+  }
+  #painel-inad .stat {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px; padding: 13px 14px;
+  }
+  #painel-inad .stat .lbl { font-size: 10.5px; color: #9FBBBD; text-transform: uppercase; margin-bottom: 6px; }
+  #painel-inad .stat .val { font-size: clamp(16px, 2vw, 21px); font-weight: 600; color: var(--white); }
+  #painel-inad .stat.crit .val { color: #F0A499; }
+  #painel-inad .trend { font-size: 11px; margin-top: 5px; font-weight: 600; display: none; }
+  #painel-inad .trend.up { color: #F0A499; display: block; }
+  #painel-inad .trend.down { color: var(--brand-green); display: block; }
+
+  /* ---------- evolution chart ---------- */
+  #painel-inad .hist-chart { display: flex; align-items: flex-end; gap: 12px; height: 130px; padding: 6px 4px 0; overflow-x: auto; }
+  #painel-inad .hist-bar-wrap { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 56px; flex: 1; height: 100%; justify-content: flex-end; }
+  #painel-inad .hist-val { font-size: 10px; font-family: 'IBM Plex Mono', monospace; color: var(--ink-soft); white-space: nowrap; }
+  #painel-inad .hist-bar { width: 32px; border-radius: 6px 6px 2px 2px; background: var(--petrol-mid); min-height: 4px; transition: height 0.25s ease; }
+  #painel-inad .hist-bar.latest { background: var(--brand-green); }
+  #painel-inad .hist-label { font-size: 10.5px; color: var(--ink-soft); font-weight: 600; white-space: nowrap; }
+
+  /* ---------- comparativo (o que mudou) ---------- */
+  #painel-inad .comp-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  #painel-inad .comp-card { background: var(--white); border: 1px solid var(--line); border-radius: 10px; padding: 14px; border-top: 3px solid var(--line); display: flex; flex-direction: column; justify-content: space-between; }
+  #painel-inad .comp-card.crit { border-top-color: var(--f3); }
+  #painel-inad .comp-card.warn { border-top-color: var(--f2); }
+  #painel-inad .comp-card.good { border-top-color: var(--brand-green); }
+  #painel-inad .comp-cnt { font-size: 22px; font-weight: 700; color: var(--ink); }
+  #painel-inad .comp-lbl { font-size: 11px; color: var(--ink-soft); text-transform: uppercase; font-weight: 600; margin-bottom: 8px; }
+  #painel-inad .comp-list { list-style: none; margin: 0 0 10px; padding: 0; font-size: 11.5px; }
+  #painel-inad .comp-list li { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-top: 1px solid var(--line); cursor: pointer; }
+  #painel-inad .comp-list li:hover { background: rgba(1,74,83,0.04); color: var(--petrol-mid); }
+  #painel-inad .comp-list li:first-child { border-top: none; }
+  #painel-inad .comp-list li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #painel-inad .comp-more { font-size: 11px; font-weight: 600; color: var(--petrol-mid); background: rgba(1,74,83,0.06); border: none; border-radius: 6px; padding: 6px; width: 100%; cursor: pointer; text-align: center; }
+  #painel-inad .comp-more:hover { background: var(--petrol-mid); color: var(--white); }
+
+  /* ---------- sections ---------- */
+  #painel-inad section { padding: 26px 32px; }
+  #painel-inad section + section { border-top: 1px solid var(--line); }
+  #painel-inad h2 {
+    font-size: 15.5px; margin: 0 0 4px; font-weight: 700;
+    display: flex; align-items: center; gap: 9px;
+  }
+  #painel-inad h2::before {
+    content: ""; width: 4px; height: 15px; border-radius: 2px;
+    background: linear-gradient(180deg, var(--brand-green), var(--petrol-mid));
+    display: inline-block;
+  }
+  #painel-inad .section-note { font-size: 12.5px; color: var(--ink-soft); margin: 0 0 16px; }
+
+  #painel-inad .legend { display: flex; align-items: center; gap: 16px; font-size: 11.5px; color: var(--ink-soft); margin-bottom: 16px; flex-wrap: wrap; }
+  #painel-inad .legend span { display: inline-flex; align-items: center; gap: 5px; }
+  #painel-inad .legend i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+
+  /* ---------- thermometer rows ---------- */
+  #painel-inad .therm-row {
+    display: grid; grid-template-columns: 200px 1fr 110px; align-items: center;
+    gap: 14px; padding: 9px 8px; border-radius: 8px; cursor: pointer;
+    transition: background 0.12s ease;
+  }
+  #painel-inad .therm-row:hover { background: rgba(1,74,83,0.05); }
+  #painel-inad .therm-row.active { background: rgba(168,200,30,0.13); }
+  #painel-inad .therm-destaque {
+    margin-top: 12px; padding: 12px 14px; border-radius: 10px;
+    background: rgba(192,57,43,0.07); border: 1px solid rgba(192,57,43,0.25);
+    font-size: 12.5px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  }
+  #painel-inad .therm-destaque b { color: var(--f3); }
+  #painel-inad .therm-destaque .num { font-weight: 700; color: var(--f3); }
+  #painel-inad .therm-pa { font-size: 12.5px; font-weight: 600; color: var(--petrol-dark); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #painel-inad .therm-bar {
+    display: flex; height: 16px; border-radius: 4px; overflow: hidden; background: var(--line);
+  }
+  #painel-inad .therm-bar .seg { height: 100%; min-width: 2px; }
+  #painel-inad .therm-val { font-size: 12.5px; text-align: right; font-weight: 600; color: var(--ink); }
+
+  /* ---------- filters ---------- */
+  #painel-inad .filters { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 14px; }
+  #painel-inad .filters input, #painel-inad .filters select {
+    font-family: inherit; font-size: 12.5px; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--white); color: var(--ink);
+  }
+  #painel-inad .filters input { flex: 1; min-width: 160px; }
+  #painel-inad .filters select { cursor: pointer; }
+  #painel-inad .chip {
+    font-size: 11px; padding: 5px 10px; border-radius: 999px; border: 1px solid var(--brand-green);
+    background: rgba(168,200,30,0.14); color: var(--petrol-dark); font-weight: 600;
+    display: none; align-items: center; gap: 6px; cursor: pointer;
+  }
+  #painel-inad .chip.show { display: inline-flex; }
+
+  /* ---------- table ---------- */
+  #painel-inad .tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; }
+  #painel-inad table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 760px; }
+  #painel-inad thead th {
+    text-align: left; padding: 10px 12px; background: var(--petrol-dark); color: #CFE0E1;
+    font-weight: 600; font-size: 11px; text-transform: uppercase; cursor: pointer; user-select: none;
+  }
+  #painel-inad thead th:hover { color: var(--white); }
+  #painel-inad tbody td { padding: 8px 12px; border-top: 1px solid var(--line); vertical-align: middle; }
+  #painel-inad tbody tr:hover { background: rgba(1,74,83,0.04); }
+  #painel-inad .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 10.5px; font-weight: 600; color: var(--white);
+  }
+  #painel-inad td.num { text-align: right; white-space: nowrap; }
+  #painel-inad .muted { color: var(--ink-soft); font-size: 11px; }
+  #painel-inad .empty { text-align: center; padding: 30px; color: var(--ink-soft); font-size: 13px; }
+
+  /* ---------- footer / admin ---------- */
+  #painel-inad footer {
+    padding: 16px 32px 22px; display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 10px;
+  }
+  #painel-inad footer .fnote { font-size: 11.5px; color: var(--ink-soft); }
+  #painel-inad .btn {
+    font-family: inherit; font-size: 12px; font-weight: 600; padding: 9px 16px; border-radius: 9px;
+    border: 1px solid var(--petrol-mid); background: var(--white); color: var(--petrol-mid); cursor: pointer;
+    transition: all .15s ease; text-decoration: none; display: inline-flex; align-items: center; justify-content: center;
+  }
+  #painel-inad .btn:hover { background: var(--petrol-dark); color: var(--white); }
+  #painel-inad .btn-primary { background: var(--brand-green); border-color: var(--brand-green); color: var(--petrol-dark); }
+  #painel-inad .btn-primary:hover { background: #93b31a; }
+  #painel-inad .admin-box { margin-top: 12px; padding: 14px; border: 1px dashed var(--line); border-radius: 10px; background: var(--white); }
+  #painel-inad .status-msg { font-size: 12px; margin-top: 8px; }
+  #painel-inad .status-msg.ok { color: #3F7A2E; }
+  #painel-inad .status-msg.err { color: var(--f3); }
+
+  /* ---------- modal ---------- */
+  #painel-inad .modal-bg {
+    display: none; position: fixed; inset: 0; background: rgba(1,46,53,0.55);
+    backdrop-filter: blur(2px); align-items: center; justify-content: center; padding: 20px; z-index: 50;
+  }
+  #painel-inad .modal-bg.show { display: flex; }
+  #painel-inad .modal-box {
+    background: var(--white); border-radius: 14px; max-width: 620px; width: 100%;
+    padding: 24px; box-shadow: 0 20px 50px rgba(0,0,0,0.25); position: relative; max-height: 85vh; overflow-y: auto;
+  }
+  #painel-inad .modal-close {
+    position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; border-radius: 50%;
+    border: none; background: var(--paper); color: var(--petrol-dark); font-weight: 700; cursor: pointer;
+  }
+  #painel-inad .modal-title { font-size: 16px; font-weight: 700; color: var(--petrol-dark); margin: 0 0 2px; }
+  #painel-inad .modal-sub { font-size: 12px; color: var(--ink-soft); margin: 0 0 16px; }
+  #painel-inad .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  #painel-inad .modal-item { background: var(--paper); border: 1px solid var(--line); border-radius: 9px; padding: 10px 12px; }
+  #painel-inad .modal-item small { display: block; font-size: 10px; text-transform: uppercase; color: var(--ink-soft); font-weight: 600; margin-bottom: 3px; }
+  #painel-inad .modal-item b { font-size: 12.5px; color: var(--ink); }
+</style>
+
+<div id="painel-inad">
+  <div class="head">
+    <p class="eyebrow">Sicoob Coopmil · Consórcio</p>
+    <h1>Painel de Inadimplência</h1>
+    <p class="sub" id="sub-database">Base de referência: —</p>
+    <div class="hero-stat">
+      <div class="hero-lbl">Total em atraso</div>
+      <div class="hero-val num" id="stat-total">R$ 0,00</div>
+      <div class="trend" id="stat-trend"></div>
+    </div>
+    <div class="stats">
+      <div class="stat">
+        <div class="lbl">Contratos em atraso</div>
+        <div class="val num" id="stat-contratos">0</div>
+      </div>
+      <div class="stat">
+        <div class="lbl">Consorciados únicos</div>
+        <div class="val num" id="stat-consorciados">0</div>
+      </div>
+      <div class="stat crit">
+        <div class="lbl">3+ parcelas</div>
+        <div class="val num" id="stat-criticos">0</div>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <h2>Termômetro por PA</h2>
+    <p class="section-note">Ordenado por <b>maior valor em atraso</b>. Clique em uma linha para filtrar.</p>
+    <div class="legend">
+      <span><i style="background:var(--f1)"></i>1 parcela</span>
+      <span><i style="background:var(--f2)"></i>2 parcelas</span>
+      <span><i style="background:var(--f3)"></i>3+ parcelas</span>
+    </div>
+    <div id="therm-list"></div>
+    <div class="therm-destaque" id="therm-destaque" style="display:none;"></div>
+  </section>
+
+  <section id="hist-section" style="display:none;">
+    <h2>Evolução mensal</h2>
+    <p class="section-note">Histórico de total em atraso por base atualizada.</p>
+    <div class="hist-chart" id="hist-chart"></div>
+  </section>
+
+  <section id="comp-section" style="display:none;">
+    <h2>O que mudou desde a última atualização</h2>
+    <p class="section-note" id="comp-note">Clique em qualquer item para ver detalhes completos ou abra a lista completa de cada grupo.</p>
+    <div class="comp-grid" id="comp-grid"></div>
+  </section>
+
+  <section>
+    <h2>Detalhamento</h2>
+    <p class="section-note">Todos os contratos em atraso, com busca e ordenação otimizada.</p>
+    <div class="filters">
+      <input type="text" id="f-busca" placeholder="Buscar por consorciado ou contrato...">
+      <select id="f-pa"><option value="">Todas as PAs</option></select>
+      <select id="f-segmento"><option value="">Todos os segmentos</option></select>
+      <select id="f-faixa">
+        <option value="">Todas as faixas</option>
+        <option value="1">1 parcela</option>
+        <option value="2">2 parcelas</option>
+        <option value="3">3+ parcelas</option>
+      </select>
+      <div class="chip" id="chip-pa" onclick="clearPaFilter()">PA: <span id="chip-pa-name"></span> ✕</div>
+      <button class="btn" style="padding:8px 12px;" onclick="limparFiltros()">Limpar filtros</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="paNum">PA <span class="arrow"></span></th>
+            <th data-key="contrato">Contrato / Gr / Ct <span class="arrow"></span></th>
+            <th data-key="nome">Consorciado / Situação <span class="arrow"></span></th>
+            <th data-key="segmento">Segmento <span class="arrow"></span></th>
+            <th data-key="qtdAtraso" style="text-align:center;">Parcelas <span class="arrow"></span></th>
+            <th data-key="valorAtraso" style="text-align:right;">Valor Atraso <span class="arrow"></span></th>
+          </tr>
+        </thead>
+        <tbody id="tbl-body"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>
+    <span class="fnote" id="foot-note">Dados carregados.</span>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <a class="btn" href="https://delicate-malasada-987da2.netlify.app/" target="_blank">🌐 Abrir no Site</a>
+      <button class="btn" onclick="window.print()">Imprimir / PDF</button>
+      <button class="btn btn-primary" onclick="exportXLSX()">Exportar Excel</button>
+      <button class="btn" onclick="toggleAdmin()">Atualizar base</button>
+    </div>
+  </footer>
+
+  <section style="padding-top:0; display:none;" id="admin-section">
+    <div class="admin-box">
+      <p><strong>Atualização da Base:</strong> Envie o arquivo Excel atualizado (aba "GERAL").</p>
+      <input type="file" id="f-upload" accept=".xlsx">
+      <div class="status-msg" id="upload-status"></div>
+      <p style="margin-top:10px;"><button class="btn" onclick="limparHistorico()">Limpar histórico salvo</button></p>
+    </div>
+  </section>
+
+  <p class="sens-note">🔒 Uso interno Sicoob Coopmil — contém dados pessoais de clientes.</p>
+
+  <div class="modal-bg" id="modal-bg" onclick="if(event.target===this) closeModal()">
+    <div class="modal-box">
+      <button class="modal-close" onclick="closeModal()">✕</button>
+      <p class="modal-title" id="modal-title">—</p>
+      <p class="modal-sub" id="modal-sub">—</p>
+      <div class="modal-grid" id="modal-grid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const EMBEDDED = {"dataBase": "07/10/2026", "contratos": [{"paNum": "18", "pa": "São José Dos Campos", "contrato": 66248923, "grupo": "1697", "cota": 872, "situacao": "BLOQ ENVIO COBRANCAS", "nome": "BALAFRE PRESTACAO DE SERVICOS", "contemplada": "Não", "segmento": "Pesados", "qtdAtraso": 4, "valorAtraso": 10861.4, "valorInicial": 308181.0, "saldoDevedor": 370020.05, "vendedor": "VINICIUS"}]};
+
+  const STORAGE_KEY = 'inadimplencia-consorcio-v6';
+  const HISTORY_KEY = 'inadimplencia-historico-v6';
+  const storageAPI = window.storage || {
+    async get(key){ const val = localStorage.getItem(key); return val === null ? null : {value: val}; },
+    async set(key, val){ localStorage.setItem(key, val); return true; }
+  };
+
+  const state = { dataBase: EMBEDDED.dataBase, contratos: EMBEDDED.contratos, sortKey: 'paNum', sortDir: 'asc', paFilter: '', historico: [] };
+
+  const MESES = ['jan','fev','mar','abr','mai','jun','jul','ago','set','out','nov','dez'];
+  function parseDataBR(s){
+    const m = String(s||'').match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    if (!m) return null;
+    return new Date(Number(m[3]), Number(m[2])-1, Number(m[1]));
+  }
+  function mesLabel(s){
+    const d = parseDataBR(s);
+    if (!d) return s;
+    return MESES[d.getMonth()] + '/' + String(d.getFullYear()).slice(2);
+  }
+  function formatDataBR(v){
+    if (v instanceof Date && !isNaN(v)) {
+      const d = String(v.getUTCDate()).padStart(2,'0');
+      const m = String(v.getUTCMonth()+1).padStart(2,'0');
+      return d + '/' + m + '/' + v.getUTCFullYear();
+    }
+    return String(v || '');
+  }
+
+  function limparNomePA(raw) {
+    let s = String(raw || '').trim();
+    s = s.replace(/^\d+[\-\s]*/, '');
+    s = s.replace(/^SICOOB\s+PA\s*[\-\s]*COOPMIL\s*/i, '');
+    s = s.replace(/^SICOOB\s+PA\s*[\-\s]*/i, '');
+    return s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ');
+  }
+
+  function resumirSegmento(raw) {
+    const s = String(raw || '').toUpperCase();
+    if (s.includes('IMOVEL') || s.includes('IMÓVEL')) return 'Imóvel';
+    if (s.includes('MOTO')) return 'Moto';
+    if (s.includes('VEICULOS') || s.includes('VEÍCULOS') || s.includes('AUTOMOTOR')) return 'Veículo';
+    if (s.includes('TRATOR') || s.includes('RODOVIARIO') || s.includes('CARGAS') || s.includes('AGRICOLA')) return 'Pesados/Trator';
+    if (s.includes('SERVICO') || s.includes('SERVIÇO')) return 'Serviços';
+    return String(raw).split(',')[0].trim();
+  }
+
+  const F1 = '#E3B341', F2 = '#DB7F3D', F3 = '#C0392B';
+  const brl = n => 'R$ ' + (n||0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+  const faixaCor = q => q >= 3 ? F3 : q === 2 ? F2 : F1;
+  const faixaLabel = q => q >= 3 ? '3+' : String(q);
+
+  function escopoPA(lista){
+    return state.paFilter ? lista.filter(c => c.pa === state.paFilter) : lista;
+  }
+
+  function render(){
+    document.getElementById('sub-database').textContent = 'Base de referência: ' + (state.dataBase || '—') + (state.paFilter ? ' · PA: ' + state.paFilter : '');
+    const escopo = escopoPA(state.contratos);
+    const total = escopo.reduce((s,c)=>s+c.valorAtraso,0);
+    const uniq = new Set(escopo.map(c=>c.nome)).size;
+    const criticos = escopo.filter(c=>c.qtdAtraso>=3).length;
+
+    document.getElementById('stat-total').textContent = brl(total);
+    document.getElementById('stat-contratos').textContent = escopo.length;
+    document.getElementById('stat-consorciados').textContent = uniq;
+    document.getElementById('stat-criticos').textContent = criticos;
+
+    renderTrend(total);
+    renderHistorico();
+    renderComparativo();
+
+    const paSel = document.getElementById('f-pa');
+    const pas = [...new Set(state.contratos.map(c=>c.pa))].sort();
+    paSel.innerHTML = '<option value="">Todas as PAs</option>' + pas.map(p=>`<option value="${p}">${p}</option>`).join('');
+    paSel.value = state.paFilter;
+
+    const segSel = document.getElementById('f-segmento');
+    const segAtual = segSel.value;
+    const segs = [...new Set(state.contratos.map(c=>c.segmentoResumo))].sort();
+    segSel.innerHTML = '<option value="">Todos os segmentos</option>' + segs.map(s=>`<option value="${s}">${s}</option>`).join('');
+    segSel.value = segs.includes(segAtual) ? segAtual : '';
+
+    renderTherm();
+    renderTable();
+    renderDestaquePA();
+  }
+
+  async function loadHistorico(){
+    try {
+      const res = await storageAPI.get(HISTORY_KEY);
+      if (res && res.value) return JSON.parse(res.value);
+    } catch (err) {}
+    return [
+      { dataBase: "07/09/2026", contratos: state.contratos.map(c => ({...c, valorAtraso: c.valorAtraso * 0.9})) }
+    ];
+  }
+
+  async function pushHistorico(entry){
+    let hist = await loadHistorico();
+    const total = entry.contratos.reduce((s,c)=>s+c.valorAtraso,0);
+    hist = hist.filter(h => h.dataBase !== entry.dataBase);
+    hist.push({ dataBase: entry.dataBase, total, contratos: entry.contratos });
+    hist.sort((a,b) => (parseDataBR(a.dataBase)||0) - (parseDataBR(b.dataBase)||0));
+    if (hist.length > 12) hist = hist.slice(hist.length - 12);
+    try { await storageAPI.set(HISTORY_KEY, JSON.stringify(hist)); } catch(err) {}
+    state.historico = hist;
+  }
+
+  function getPrevSnapshot(){
+    const hist = state.historico.filter(h => h.dataBase !== state.dataBase && h.contratos);
+    if (!hist.length) return null;
+    hist.sort((a,b) => (parseDataBR(a.dataBase)||0) - (parseDataBR(b.dataBase)||0));
+    return hist[hist.length - 1];
+  }
+
+  function computeComparativo(){
+    const prev = getPrevSnapshot();
+    if (!prev) return null;
+    const key = c => c.contrato + '|' + c.cota;
+    const prevContratos = escopoPA(prev.contratos);
+    const curContratos = escopoPA(state.contratos);
+    const prevMap = {}; prevContratos.forEach(c => prevMap[key(c)] = c);
+    const curMap = {}; curContratos.forEach(c => curMap[key(c)] = c);
+    const novos = [], quitados = [], aumentaram = [], diminuiram = [];
+    Object.keys(curMap).forEach(k => {
+      const c = curMap[k];
+      const p = prevMap[k];
+      if (!p) { novos.push(c); return; }
+      const delta = c.valorAtraso - p.valorAtraso;
+      if (delta > 0.5) aumentaram.push({ ...c, delta, valorAnterior: p.valorAtraso });
+      else if (delta < -0.5) diminuiram.push({ ...c, delta, valorAnterior: p.valorAtraso });
+    });
+    Object.keys(prevMap).forEach(k => { if (!curMap[k]) quitados.push(prevMap[k]); });
+    [novos, aumentaram, diminuiram].forEach(list => list.sort((a,b)=>b.valorAtraso-a.valorAtraso));
+    quitados.sort((a,b)=>b.valorAtraso-a.valorAtraso);
+    return { prevDataBase: prev.dataBase, novos, quitados, aumentaram, diminuiram };
+  }
+
+  function renderComparativo(){
+    const section = document.getElementById('comp-section');
+    const cmp = computeComparativo();
+    if (!cmp) { section.style.display = 'none'; return; }
+    section.style.display = '';
+    document.getElementById('comp-note').textContent = 'Comparado com ' + mesLabel(cmp.prevDataBase) + '. Clique em qualquer item ou no botão "Ver todos" para abrir a lista completa.';
+
+    const groups = [
+      { key: 'novos', title: 'Novos em atraso', cls: 'crit', items: cmp.novos },
+      { key: 'quitados', title: 'Saíram da lista (quitados)', cls: 'good', items: cmp.quitados },
+      { key: 'aumentaram', title: 'Aumentaram o atraso', cls: 'warn', items: cmp.aumentaram },
+      { key: 'diminuiram', title: 'Reduziram o atraso', cls: 'good', items: cmp.diminuiram },
+    ];
+
+    document.getElementById('comp-grid').innerHTML = groups.map(g => `
+      <div class="comp-card ${g.cls}">
+        <div>
+          <div class="comp-cnt num">${g.items.length}</div>
+          <div class="comp-lbl">${g.title}</div>
+          <ul class="comp-list">
+            ${g.items.slice(0,4).map(c => `<li onclick='openModal(${JSON.stringify(c).replace(/"/g, "&quot;")})'><span>${c.pa}</span><b class="num">${brl(c.valorAtraso || c.delta)}</b></li>`).join('') || '<li class="muted">Nenhum</li>'}
+          </ul>
+        </div>
+        ${g.items.length > 0 ? `<button class="comp-more" onclick='openFullList("${g.title}", ${JSON.stringify(g.items).replace(/"/g, "&quot;")})'>Ver todos (${g.items.length})</button>` : ''}
+      </div>
+    `).join('');
+  }
+
+  window.openFullList = function(title, items) {
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-sub').textContent = 'Total de registros: ' + items.length;
+    const grid = document.getElementById('modal-grid');
+    grid.style.gridTemplateColumns = '1fr';
+    grid.innerHTML = items.map(c => `
+      <div class="modal-item" style="cursor:pointer;" onclick='openModal(${JSON.stringify(c).replace(/"/g, "&quot;")})'>
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div><b>${c.nome}</b><br><small>${c.pa} · Contrato ${c.contrato}</small></div>
+          <div class="num" style="font-weight:700; color:var(--petrol-dark);">${brl(c.valorAtraso || c.delta)}</div>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('modal-bg').classList.add('show');
+  };
+
+  function renderTrend(total){
+    const el = document.getElementById('stat-trend');
+    const hist = state.historico.filter(h => h.dataBase !== state.dataBase);
+    if (!hist.length) { el.className = 'trend'; el.textContent = ''; return; }
+    const prev = hist[hist.length - 1];
+    const prevTotal = prev.contratos ? escopoPA(prev.contratos).reduce((s,c)=>s+c.valorAtraso,0) : prev.total;
+    const diff = total - prevTotal;
+    if (Math.abs(diff) < 0.5) { el.className = 'trend'; el.textContent = ''; return; }
+    const pct = prevTotal ? Math.abs(diff / prevTotal * 100) : 0;
+    const up = diff > 0;
+    el.className = 'trend ' + (up ? 'up' : 'down');
+    el.textContent = (up ? '▲ ' : '▼ ') + brl(Math.abs(diff)) + ' (' + pct.toFixed(1).replace('.', ',') + '%) vs ' + mesLabel(prev.dataBase);
+  }
+
+  function renderHistorico(){
+    const section = document.getElementById('hist-section');
+    const chart = document.getElementById('hist-chart');
+    const totalAtual = escopoPA(state.contratos).reduce((s,c)=>s+c.valorAtraso,0);
+    const all = [...state.historico.filter(h => h.dataBase !== state.dataBase).map(h => ({
+                   dataBase: h.dataBase,
+                   total: h.contratos ? escopoPA(h.contratos).reduce((s,c)=>s+c.valorAtraso,0) : h.total
+                 })),
+                 { dataBase: state.dataBase, total: totalAtual }];
+    if (all.length < 2) { if(section) section.style.display = 'none'; return; }
+    if(section) section.style.display = '';
+    const max = Math.max(...all.map(h=>h.total), 1);
+    if(chart) {
+      chart.innerHTML = all.map((h,i)=>{
+        const heightPct = Math.max((h.total/max)*100, 4);
+        const latest = i === all.length - 1;
+        return `<div class="hist-bar-wrap">
+          <div class="hist-val">${brl(h.total)}</div>
+          <div class="hist-bar${latest?' latest':''}" style="height:${heightPct}%"></div>
+          <div class="hist-label">${mesLabel(h.dataBase)}</div>
+        </div>`;
+      }).join('');
+    }
+  }
+
+  function renderTherm(){
+    const byPa = {};
+    state.contratos.forEach(c=>{
+      byPa[c.pa] = byPa[c.pa] || {pa: c.pa, total: 0, f1:0, f2:0, f3:0};
+      byPa[c.pa].total += c.valorAtraso;
+      if (c.qtdAtraso >= 3) byPa[c.pa].f3 += c.valorAtraso;
+      else if (c.qtdAtraso === 2) byPa[c.pa].f2 += c.valorAtraso;
+      else byPa[c.pa].f1 += c.valorAtraso;
+    });
+    const list = Object.values(byPa).sort((a,b) => b.total - a.total);
+    const max = list.length ? list[0].total : 1;
+    const wrap = document.getElementById('therm-list');
+    wrap.innerHTML = list.map(row=>{
+      const width = Math.max((row.total/max)*100, 4);
+      const active = state.paFilter === row.pa ? ' active' : '';
+      const segs = ['f1','f2','f3'].map(k=>{
+        const pct = row.total ? (row[k]/row.total*100) : 0;
+        const color = k==='f1'?F1:k==='f2'?F2:F3;
+        return pct>0 ? `<div class="seg" style="width:${pct}%;background:${color}"></div>` : '';
+      }).join('');
+      return `<div class="therm-row${active}" onclick="filterByPa('${row.pa.replace(/'/g,"\\'")}')">
+        <div class="therm-pa">${row.pa}</div>
+        <div class="therm-bar" style="width:${width}%"><div style="display:flex;width:100%;height:100%">${segs}</div></div>
+        <div class="therm-val num">${brl(row.total)}</div>
+      </div>`;
+    }).join('') || '<div class="empty">Sem contratos em atraso.</div>';
+  }
+
+  function renderDestaquePA(){
+    const el = document.getElementById('therm-destaque');
+    if (!state.paFilter) { el.style.display = 'none'; return; }
+    const doPA = state.contratos.filter(c => c.pa === state.paFilter);
+    if (!doPA.length) { el.style.display = 'none'; return; }
+    const totalPA = doPA.reduce((s,c)=>s+c.valorAtraso,0);
+    const criticosPA = doPA.filter(c=>c.qtdAtraso>=3);
+    const totalCritico = criticosPA.reduce((s,c)=>s+c.valorAtraso,0);
+    const pctCritico = totalPA ? (totalCritico / totalPA * 100) : 0;
+    const maior = doPA.reduce((max, c) => c.valorAtraso > max.valorAtraso ? c : max, doPA[0]);
+
+    el.style.display = 'flex';
+    el.innerHTML = `<span>📍 Análise da PA <b>${state.paFilter}</b>: <b>${doPA.length} contratos</b> totalizando <span class="num">${brl(totalPA)}</span>. Desses, <span class="num">${pctCritico.toFixed(0)}%</span> estão na faixa crítica (3+ parcelas). Maior caso: <b>${maior.nome}</b> (<span class="num">${brl(maior.valorAtraso)}</span>).</span>`;
+  }
+
+  function getFilteredContratos(){
+    const q = (document.getElementById('f-busca').value || '').toLowerCase();
+    const pa = document.getElementById('f-pa').value;
+    const seg = document.getElementById('f-segmento').value;
+    const faixa = document.getElementById('f-faixa').value;
+
+    return state.contratos.filter(c => {
+      if (state.paFilter && c.pa !== state.paFilter) return false;
+      if (pa && c.pa !== pa) return false;
+      if (seg && c.segmentoResumo !== seg) return false;
+      if (faixa === '1' && c.qtdAtraso !== 1) return false;
+      if (faixa === '2' && c.qtdAtraso !== 2) return false;
+      if (faixa === '3' && c.qtdAtraso < 3) return false;
+      if (q) {
+        const txt = (c.nome + ' ' + c.contrato + ' ' + c.grupo + ' ' + c.cota + ' ' + c.vendedor).toLowerCase();
+        if (!txt.includes(q)) return false;
+      }
+      return true;
+    });
+  }
+
+  function renderTable(){
+    const list = getFilteredContratos();
+    list.sort((a,b)=>{
+      let va = a[state.sortKey], vb = b[state.sortKey];
+      if (state.sortKey === 'paNum') {
+        va = parseInt(String(va).replace(/\D/g,''), 10) || 0;
+        vb = parseInt(String(vb).replace(/\D/g,''), 10) || 0;
+      }
+      if (typeof va === 'string') va = va.toLowerCase();
+      if (typeof vb === 'string') vb = vb.toLowerCase();
+      if (va < vb) return state.sortDir === 'asc' ? -1 : 1;
+      if (va > vb) return state.sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    const tbody = document.getElementById('tbl-body');
+    if (!list.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">Nenhum contrato encontrado.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = list.map((c) => `
+      <tr onclick='openModal(${JSON.stringify(c).replace(/"/g, '&quot;')})'>
+        <td><b>${c.pa}</b></td>
+        <td><span class="num"><b>${c.contrato}</b></span><br><span class="muted">Gr. ${c.grupo} / Ct. ${c.cota}</span></td>
+        <td><b>${c.nome}</b><br><span class="muted">${c.situacao}</span></td>
+        <td><span class="badge" style="background:#014A53">${c.segmentoResumo}</span></td>
+        <td style="text-align:center;"><span class="badge" style="background:${faixaCor(c.qtdAtraso)}">${faixaLabel(c.qtdAtraso)} par.</span></td>
+        <td class="num"><span class="num" style="font-weight:600">${brl(c.valorAtraso)}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  window.filterByPa = function(pa){
+    state.paFilter = state.paFilter === pa ? '' : pa;
+    const chip = document.getElementById('chip-pa');
+    if (state.paFilter) {
+      chip.classList.add('show');
+      document.getElementById('chip-pa-name').textContent = state.paFilter;
+    } else {
+      chip.classList.remove('show');
+    }
+    render();
+  };
+
+  window.clearPaFilter = function(){
+    state.paFilter = '';
+    document.getElementById('chip-pa').classList.remove('show');
+    render();
+  };
+
+  window.limparFiltros = function(){
+    document.getElementById('f-busca').value = '';
+    document.getElementById('f-pa').value = '';
+    document.getElementById('f-segmento').value = '';
+    document.getElementById('f-faixa').value = '';
+    state.paFilter = '';
+    document.getElementById('chip-pa').classList.remove('show');
+    render();
+  };
+
+  window.openModal = function(c){
+    document.getElementById('modal-title').textContent = c.nome;
+    document.getElementById('modal-sub').textContent = 'Contrato: ' + c.contrato + ' · Grupo: ' + c.grupo + ' · Cota: ' + c.cota;
+    const grid = document.getElementById('modal-grid');
+    grid.style.gridTemplateColumns = '1fr 1fr';
+    grid.innerHTML = `
+      <div class="modal-item"><small>PA</small><b>${c.pa}</b></div>
+      <div class="modal-item"><small>Segmento</small><b>${c.segmento}</b></div>
+      <div class="modal-item"><small>Situação Cobrança</small><b>${c.situacao}</b></div>
+      <div class="modal-item"><small>Contemplada</small><b>${c.contemplada}</b></div>
+      <div class="modal-item"><small>Parcelas em Atraso</small><b>${c.qtdAtraso} parcela(s)</b></div>
+      <div class="modal-item"><small>Valor em Atraso</small><b class="num">${brl(c.valorAtraso)}</b></div>
+      <div class="modal-item"><small>Valor Inicial</small><b class="num">${brl(c.valorInicial)}</b></div>
+      <div class="modal-item"><small>Saldo Devedor</small><b class="num">${brl(c.saldoDevedor)}</b></div>
+      <div class="modal-item" style="grid-column: span 2"><small>Vendedor</small><b>${c.vendedor || '—'}</b></div>
+    `;
+    document.getElementById('modal-bg').classList.add('show');
+  };
+
+  window.closeModal = function(){
+    document.getElementById('modal-bg').classList.remove('show');
+  };
+
+  window.toggleAdmin = function(){
+    const sec = document.getElementById('admin-section');
+    sec.style.display = sec.style.display === 'none' ? 'block' : 'none';
+  };
+
+  window.exportXLSX = function(){
+    try {
+      const list = getFilteredContratos();
+      const rows = list.map(c => ({
+        'PA': c.pa, 'Contrato': c.contrato, 'Grupo': c.grupo, 'Cota': c.cota,
+        'Consorciado': c.nome, 'Segmento': c.segmento, 'Situação': c.situacao,
+        'Contemplada': c.contemplada, 'Parcelas Atraso': c.qtdAtraso,
+        'Valor Atraso (R$)': c.valorAtraso, 'Valor Inicial (R$)': c.valorInicial,
+        'Saldo Devedor (R$)': c.saldoDevedor, 'Vendedor': c.vendedor
+      }));
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Inadimplencia");
+      XLSX.writeFile(wb, "Inadimplencia_Consorcio.xlsx");
+    } catch(err) {
+      alert("Erro ao exportar Excel: " + err.message);
+    }
+  };
+
+  document.getElementById('f-upload').addEventListener('change', function(e){
+    const file = e.target.files[0];
+    const status = document.getElementById('upload-status');
+    if (!file) return;
+    status.textContent = 'Lendo arquivo...';
+    status.className = 'status-msg';
+
+    const reader = new FileReader();
+    reader.onload = async function(evt){
+      try {
+        const data = new Uint8Array(evt.target.result);
+        const workbook = XLSX.read(data, {type: 'array', cellDates: true});
+        const sheetName = workbook.SheetNames.find(s => s.toUpperCase().includes('GERAL')) || workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+        const json = XLSX.utils.sheet_to_json(worksheet, {header: 1});
+
+        if (!json || json.length < 2) throw new Error('A planilha está vazia.');
+
+        const novosContratos = [];
+        let dataBaseStr = '';
+
+        for (let i = 1; i < json.length; i++) {
+          const r = json[i];
+          if (!r || r.length < 8) continue;
+          
+          const contratoVal = r[7];
+          if (!contratoVal) continue;
+
+          if (!dataBaseStr && r[0]) {
+            dataBaseStr = formatDataBR(r[0]);
+          }
+
+          const paBruto = r[21] || r[6] || 'Geral';
+          const paLimpo = limparNomePA(paBruto);
+          const segOriginal = String(r[14] || 'Outros');
+
+          novosContratos.push({
+            paNum: String(r[5] || '0').trim(),
+            pa: paLimpo,
+            contrato: contratoVal,
+            grupo: String(r[8] || ''),
+            cota: Number(r[9]) || 0,
+            situacao: String(r[10] || ''),
+            nome: String(r[11] || 'NÃO IDENTIFICADO'),
+            contemplada: String(r[13] || 'Não'),
+            segmento: segOriginal,
+            segmentoResumo: resumirSegmento(segOriginal),
+            qtdAtraso: Number(r[15]) || 1,
+            valorAtraso: Number(r[16]) || 0,
+            valorInicial: Number(r[17]) || 0,
+            saldoDevedor: Number(r[18]) || 0,
+            vendedor: String(r[20] || '—')
+          });
+        }
+
+        if (novosContratos.length === 0) throw new Error('Nenhum contrato válido encontrado.');
+        if (!dataBaseStr) dataBaseStr = new Date().toLocaleDateString('pt-BR');
+
+        state.dataBase = dataBaseStr;
+        state.contratos = novosContratos;
+
+        const payload = JSON.stringify({ dataBase: dataBaseStr, contratos: novosContratos });
+        await storageAPI.set(STORAGE_KEY, payload);
+        await pushHistorico({ dataBase: dataBaseStr, contratos: novosContratos });
+
+        status.textContent = `Sucesso! ${novosContratos.length} contratos carregados (Base: ${dataBaseStr}).`;
+        status.className = 'status-msg ok';
+        render();
+
+      } catch(err) {
+        status.textContent = 'Erro ao processar: ' + err.message;
+        status.className = 'status-msg err';
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+
+  window.limparHistorico = async function(){
+    if (confirm("Deseja limpar o histórico?")) {
+      try { await storageAPI.set(HISTORY_KEY, JSON.stringify([])); } catch(e){}
+      state.historico = [];
+      render();
+      alert("Histórico limpo!");
+    }
+  };
+
+  async function init(){
+    try {
+      const saved = await storageAPI.get(STORAGE_KEY);
+      if (saved && saved.value) {
+        const parsed = JSON.parse(saved.value);
+        if (parsed.dataBase && parsed.contratos && parsed.contratos.length > 0) {
+          state.dataBase = parsed.dataBase;
+          state.contratos = parsed.contratos.map(c => ({
+            ...c,
+            segmentoResumo: resumirSegmento(c.segmento),
+            pa: limparNomePA(c.pa)
+          }));
+        }
+      }
+      state.historico = await loadHistorico();
+      await pushHistorico({ dataBase: state.dataBase, contratos: state.contratos });
+    } catch(e){}
+    render();
+
+    document.querySelectorAll('thead th[data-key]').forEach(th => {
+      th.addEventListener('click', function(){
+        const key = this.getAttribute('data-key');
+        if (state.sortKey === key) {
+          state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          state.sortKey = key;
+          state.sortDir = 'asc';
+        }
+        renderTable();
+      });
+    });
+
+    ['f-busca', 'f-pa', 'f-segmento', 'f-faixa'].forEach(id => {
+      document.getElementById(id).addEventListener('input', renderTable);
+      document.getElementById(id).addEventListener('change', renderTable);
+    });
+  }
+
+  init();
+})();
+</script>
